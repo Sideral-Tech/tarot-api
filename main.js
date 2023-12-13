@@ -1,20 +1,17 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const fs = require("fs");
-const path = require("path");
-const cloneDeep = require("lodash.clonedeep");
-const remove = require("lodash.remove");
+import express from "npm:express@4.18.2"
 
 const app = express();
 const router = express.Router();
 
+const __dirname = Deno.realPathSync(Deno.cwd());
+
 const root =
-  process.env.NODE_ENV === "production"
-    ? path.join(__dirname, "..")
+  Deno.env.get("NODE_ENV") === "production"
+    ? Deno.realPathSync(__dirname + "/..")
     : __dirname;
 
-app.use(bodyParser.json());
-app.use("/static", express.static(path.join(root, "static")));
+app.use(express.json());
+app.use("/static", express.static(Deno.realPathSync(Deno.cwd() + "/static")));
 
 app.get("/", (_req, res) => {
   return res.sendFile("static/index.html", { root });
@@ -28,7 +25,7 @@ router.get("/docs", (_req, res) => {
 
 router.use((_req, res, next) => {
   res.locals.rawData = JSON.parse(
-    fs.readFileSync("static/card_data.json", "utf8")
+    Deno.readTextFileSync("static/card_data.json")
   );
   return next();
 });
@@ -36,7 +33,7 @@ router.use((_req, res, next) => {
 router.use((_req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Credentials", true);
-  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin,X-Requested-With,Content-Type,Accept,content-type,application/json"
@@ -50,54 +47,63 @@ router.get("/", (_req, res) => {
 
 router.get("/cards", (_req, res) => {
   const { cards } = res.locals.rawData;
-  return res.json({ nhits: cards.length, cards }).status(200);
+  return res.json({ nhits: cards.length, cards });
 });
 
 router.get("/cards/search", (req, res) => {
   const { cards } = res.locals.rawData;
   console.log(`req.query:`, req.query);
-  if (!req.query || Object.keys(req.query).length === 0)
+
+  // Check for empty query and redirect if necessary
+  if (!req.query || Object.keys(req.query).length === 0) {
     return res.redirect("/api/v1/cards");
-  let filteredCards = [];
-  for (let k in req.query) {
-    if (k !== "q") {
-      if (k === "meaning") {
-        filteredCards = cards.filter((c) =>
-          [c.meaning_up, c.meaning_rev]
-            .join()
-            .toLowerCase()
-            .includes(req.query[k].toLowerCase())
-        );
-      } else {
-        filteredCards = cards.filter(
-          (c) => c[k] && c[k].toLowerCase().includes(req.query[k].toLowerCase())
-        );
-      }
-    } else if (k === "q") {
-      filteredCards = cards.filter((c) =>
-        Object.values(c)
-          .join()
-          .toLowerCase()
-          .includes(req.query[k].toLowerCase())
-      );
-    }
   }
-  return res
-    .json({ nhits: filteredCards.length, cards: filteredCards })
-    .status(200);
+
+  // Function to determine if a card matches all the query parameters
+  const matchesAllQueries = (card) => {
+    return Object.keys(req.query).every((key) => {
+      const value = req.query[key].toLowerCase();
+      if (key === "meaning") {
+        return [card.meaning_up, card.meaning_rev].join().toLowerCase().includes(value);
+      } else if (key === "q") {
+        return Object.values(card).join().toLowerCase().includes(value);
+      } else {
+        return card[key] && card[key].toString().toLowerCase() === value;
+      }
+    });
+  };
+
+  // Filter the cards using the matchesAllQueries function
+  const filteredCards = cards.filter(matchesAllQueries);
+
+  // Return the JSON response with filtered cards
+  return res.json({ nhits: filteredCards.length, cards: filteredCards });
 });
 
 router.get("/cards/random", (req, res) => {
   const { cards } = res.locals.rawData;
-  const n = req.query.n > 0 && req.query.n < 79 ? req.query.n : 78;
-  let cardPool = cloneDeep(cards);
-  let returnCards = [];
-  for (let i = 0; i < n; i++) {
-    let id = Math.floor(Math.random() * (78 - i));
-    let card = cardPool[id];
-    returnCards.push(card);
-    remove(cardPool, (c) => c.name_short === card.name_short);
+  const numberOfCardsToSelect = req.query.n > 0 && req.query.n < 79 ? parseInt(req.query.n) : 78;
+
+  // Fisher-Yates shuffle algorithm
+  const shuffleArray = (array) => {
+    let currentIndex = array.length, temporaryValue, randomIndex;
+
+    // While there remain elements to shuffle...
+    while (currentIndex !== 0) {
+      // Pick a remaining element...
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+
+      // And swap it with the current element.
+      temporaryValue = array[currentIndex];
+      array[currentIndex] = array[randomIndex];
+      array[randomIndex] = temporaryValue;
+    }
+
+    return array;
   }
+  const shuffledCards = shuffleArray(structuredClone(cards));
+  const returnCards = shuffledCards.slice(0, numberOfCardsToSelect);
   return res.json({ nhits: returnCards.length, cards: returnCards });
 });
 
@@ -105,7 +111,7 @@ router.get("/cards/:id", (req, res, next) => {
   const { cards } = res.locals.rawData;
   const card = cards.find((c) => c.name_short === req.params.id);
   if (typeof card === "undefined") return next();
-  return res.json({ nhits: 1, card }).status(200);
+  return res.json({ nhits: 1, card });
 });
 
 router.get("/cards/suits/:suit", (req, res, next) => {
@@ -114,7 +120,7 @@ router.get("/cards/suits/:suit", (req, res, next) => {
   if (!cardsOfSuit.length) return next();
   return res
     .json({ nhits: cardsOfSuit.length, cards: cardsOfSuit })
-    .status(200);
+    ;
 });
 
 router.get("/cards/courts", (_req, res) => {
@@ -122,7 +128,7 @@ router.get("/cards/courts", (_req, res) => {
   const courtCards = cards.filter((c) =>
     ["queen", "king", "page", "knight"].includes(c.value)
   );
-  return res.json({ nhits: courtCards.length, cards: courtCards }).status(200);
+  return res.json({ nhits: courtCards.length, cards: courtCards });
 });
 
 router.get("/cards/courts/:court", (req, res, next) => {
@@ -135,11 +141,11 @@ router.get("/cards/courts/:court", (req, res, next) => {
   if (!cardsOfCourt.length) return next();
   return res
     .json({ nhits: cardsOfCourt.length, cards: cardsOfCourt })
-    .status(200);
+    ;
 });
 
 router.use((_req, _res, next) => {
-  var err = new Error("Not Found");
+  const err = new Error("Not Found");
   err.status = 404;
   next(err);
 });
@@ -149,7 +155,7 @@ router.use((err, _req, res) => {
   res.json({ error: { status: err.status, message: err.message } });
 });
 
-const port = process.env.PORT || 8000;
+const port = Deno.env.get("PORT") || 8000;
 
 app.listen(port, () => {
   console.log("RWS API Server now running on port", port);

@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://tarot-api-3hv5.onrender.com/api/v1",
+      "url": "https://tarot.deno.dev",
       "description": "Production server"
     },
     {
@@ -28,9 +28,7 @@
   "paths": {
     "/docs": {
       "get": {
-        "tags": [
-          "meta"
-        ],
+        "tags": ["meta"],
         "responses": {
           "200": {
             "description": "Get JSON documentation for this API.",
@@ -47,9 +45,7 @@
     },
     "/cards": {
       "get": {
-        "tags": [
-          "list"
-        ],
+        "tags": ["list"],
         "responses": {
           "200": {
             "description": "Get all card data.",
@@ -66,10 +62,7 @@
     },
     "/cards/suits/{suit}": {
       "get": {
-        "tags": [
-          "list",
-          "suit"
-        ],
+        "tags": ["list", "suit"],
         "parameters": [
           {
             "name": "suit",
@@ -79,12 +72,7 @@
             "explode": false,
             "schema": {
               "type": "string",
-              "enum": [
-                "wands",
-                "cups",
-                "swords",
-                "pentacles"
-              ]
+              "enum": ["wands", "cups", "swords", "pentacles"]
             }
           }
         ],
@@ -104,10 +92,7 @@
     },
     "/cards/courts": {
       "get": {
-        "tags": [
-          "list",
-          "courts"
-        ],
+        "tags": ["list", "courts"],
         "responses": {
           "200": {
             "description": "Get cards of all or specified court rank",
@@ -124,10 +109,7 @@
     },
     "/cards/courts/{rank}": {
       "get": {
-        "tags": [
-          "courts",
-          "list"
-        ],
+        "tags": ["courts", "list"],
         "parameters": [
           {
             "name": "rank",
@@ -166,10 +148,7 @@
     },
     "/cards/search": {
       "get": {
-        "tags": [
-          "search",
-          "list"
-        ],
+        "tags": ["search", "list"],
         "parameters": [
           {
             "name": "q",
@@ -191,12 +170,7 @@
             "explode": true,
             "schema": {
               "type": "string",
-              "enum": [
-                "wands",
-                "swords",
-                "cups",
-                "pentacles"
-              ]
+              "enum": ["wands", "swords", "cups", "pentacles"]
             }
           },
           {
@@ -219,10 +193,7 @@
             "explode": true,
             "schema": {
               "type": "string",
-              "enum": [
-                "major",
-                "minor"
-              ]
+              "enum": ["major", "minor"]
             }
           }
         ],
@@ -242,10 +213,7 @@
     },
     "/cards/random": {
       "get": {
-        "tags": [
-          "random",
-          "list"
-        ],
+        "tags": ["random", "list"],
         "parameters": [
           {
             "name": "n",
@@ -293,10 +261,7 @@
           },
           "type": {
             "type": "string",
-            "enum": [
-              "major",
-              "minor"
-            ]
+            "enum": ["major", "minor"]
           },
           "meaning_up": {
             "type": "string"
